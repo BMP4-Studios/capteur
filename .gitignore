@@ -1,0 +1,77 @@
+# JUCE Build Artifacts
+JuceLibraryCode/**
+Builds/**
+
+# IDE and Editor files
+.vscode/
+.vs/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Android Build
+Builds/Android/.gradle/
+Builds/Android/build/
+Builds/Android/app/build/
+Builds/Android/gradle/wrapper/gradle-wrapper.jar
+*.apk
+*.aab
+
+# Visual Studio
+*.vcxproj.user
+*.vcxproj.filters.user
+*.sln.user
+*.VC.db
+*.VC.VC.opendb
+ipch/
+
+# Xcode
+DerivedData/
+*.xcworkspace/xcuserdata/
+xcuserdata/
+*.xcarchive
+
+# CMake
+CMakeCache.txt
+CMakeLists.txt.user
+CMakeFiles/
+cmake_install.cmake
+
+# Environment and Configuration
+.env
+.env.local
+local.properties
+
+# Dependencies
+/node_modules/
+/package-lock.json
+/yarn.lock
+
+# OS and System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+
+# Output binaries (will be created during build)
+/bin/
+/lib/
