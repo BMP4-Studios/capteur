@@ -266,6 +266,9 @@ public:
                 startRecording();
         };
 
+        addAndMakeVisible (settingsButton);
+        settingsButton.onClick = [this] { showAudioSettings(); };
+
         addAndMakeVisible (recordingThumbnail);
 
        #ifndef JUCE_DEMO_RUNNER
@@ -300,8 +303,12 @@ public:
 
         liveAudioScroller .setBounds (area.removeFromTop (80).reduced (8));
         recordingThumbnail.setBounds (area.removeFromTop (80).reduced (8));
-        recordButton      .setBounds (area.removeFromTop (36).removeFromLeft (140).reduced (8));
-        explanationLabel  .setBounds (area.reduced (8));
+
+        auto buttonRow = area.removeFromTop (36);
+        recordButton  .setBounds (buttonRow.removeFromLeft (140).reduced (8));
+        settingsButton.setBounds (buttonRow.removeFromLeft (140).reduced (8));
+
+        explanationLabel.setBounds (area.reduced (8));
     }
 
 private:
@@ -320,6 +327,7 @@ private:
                              "This page demonstrates how to record a wave file from the live audio input.\n\n"
                              "After you are done with your recording you can choose where to save it." };
     TextButton recordButton { "Record" };
+    TextButton settingsButton { "Settings" };
     File lastRecording;
     FileChooser chooser { "Output file...", File::getCurrentWorkingDirectory().getChildFile ("recording.wav"), "*.wav" };
 
@@ -370,6 +378,29 @@ private:
                                  recordButton.setButtonText ("Record");
                                  recordingThumbnail.setDisplayFullThumbnail (true);
                              });
+    }
+
+    void showAudioSettings()
+    {
+        auto selector = std::make_unique<AudioDeviceSelectorComponent> (audioDeviceManager,
+                                                                        0, 2, 0, 2,
+                                                                        false, false, true, false);
+
+        // Adjust size based on the current window size
+        auto width  = jmin (500, (int) (getWidth() * 0.95f));
+        auto height = jmin (600, (int) (getHeight() * 0.95f));
+        selector->setSize (width, height);
+
+        DialogWindow::LaunchOptions options;
+        options.content.setOwned (selector.release());
+        options.dialogTitle                   = "Audio Settings";
+        options.dialogBackgroundColour        = getUIColourIfAvailable (LookAndFeel_V4::ColourScheme::UIColour::windowBackground);
+        options.escapeKeyTriggersCloseButton  = true;
+        options.useNativeTitleBar             = false; // Use JUCE title bar to ensure a close button is visible
+        options.resizable                     = false;
+        options.componentToCentreAround       = this;
+
+        options.launchAsync();
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioRecordingDemo)
