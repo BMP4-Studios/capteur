@@ -115,7 +115,8 @@
     </LINUX_MAKE>
     <ANDROIDSTUDIO targetFolder="Builds/Android" androidExtraAssetsFolder="C:\Users\barth\Documents\git\JUCE\examples\Assets"
                    androidBluetoothScanNeeded="1" androidBluetoothAdvertiseNeeded="1"
-                   androidBluetoothConnectNeeded="1">
+                   androidBluetoothConnectNeeded="1" microphonePermissionNeeded="1"
+                   gradleVersion="9.4.1" gradleWrapperVersion="9.2.1">
       <CONFIGURATIONS>
         <CONFIGURATION name="Debug" isDebug="1" optimisation="1" targetName="AudioRecordingDemo"/>
         <CONFIGURATION name="Release" isDebug="0" optimisation="3" targetName="AudioRecordingDemo"/>

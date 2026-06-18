@@ -325,6 +325,7 @@ private:
 
     void startRecording()
     {
+       #if ! JUCE_ANDROID
         if (! RuntimePermissions::isGranted (RuntimePermissions::writeExternalStorage))
         {
             SafePointer<AudioRecordingDemo> safeThis (this);
@@ -337,6 +338,7 @@ private:
                                          });
             return;
         }
+       #endif
 
        #if (JUCE_ANDROID || JUCE_IOS)
         auto parentDir = File::getSpecialLocation (File::tempDirectory);
