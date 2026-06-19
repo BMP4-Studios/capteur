@@ -22,3 +22,152 @@
 */
 
 #include "CapteurComponent.h"
+
+CapteurComponent::CapteurComponent ()
+{
+    setOpaque (true);
+    addAndMakeVisible (liveAudioScroller);
+
+    addAndMakeVisible (explanationLabel);
+    explanationLabel.setFont (FontOptions (15.0f, Font::plain));
+    explanationLabel.setJustificationType (Justification::topLeft);
+    explanationLabel.setEditable (false, false, false);
+    explanationLabel.setColour (TextEditor::textColourId, Colours::black);
+    explanationLabel.setColour (TextEditor::backgroundColourId, Colour (0x00000000));
+
+    addAndMakeVisible (recordButton);
+    recordButton.setColour (TextButton::buttonColourId, Colour (0xffff5c5c));
+    recordButton.setColour (TextButton::textColourOnId, Colours::black);
+
+    recordButton.onClick = [this]
+        {
+            if (recorder.isRecording ())
+                stopRecording ();
+            else
+                startRecording ();
+        };
+
+    addAndMakeVisible (settingsButton);
+    settingsButton.onClick = [this] { showAudioSettings (); };
+
+    addAndMakeVisible (recordingThumbnail);
+
+#ifndef JUCE_DEMO_RUNNER
+    RuntimePermissions::request (RuntimePermissions::recordAudio,
+                                 [this](bool granted)
+                                 {
+                                     int numInputChannels = granted ? 2 : 0;
+                                     audioDeviceManager.initialise (
+                                         numInputChannels, 2, nullptr, true, {}, nullptr);
+                                 });
+#endif
+
+    audioDeviceManager.addAudioCallback (&liveAudioScroller);
+    audioDeviceManager.addAudioCallback (&recorder);
+
+    setSize (500, 500);
+}
+
+CapteurComponent::~CapteurComponent ()
+{
+    audioDeviceManager.removeAudioCallback (&recorder);
+    audioDeviceManager.removeAudioCallback (&liveAudioScroller);
+}
+
+void CapteurComponent::resized ()
+{
+    auto area = getLocalBounds ();
+
+    liveAudioScroller.setBounds (area.removeFromTop (80).reduced (8));
+    recordingThumbnail.setBounds (area.removeFromTop (80).reduced (8));
+
+    auto buttonRow = area.removeFromTop (36);
+    recordButton.setBounds (buttonRow.removeFromLeft (140).reduced (8));
+    settingsButton.setBounds (buttonRow.removeFromLeft (140).reduced (8));
+
+    explanationLabel.setBounds (area.reduced (8));
+}
+
+void CapteurComponent::startRecording ()
+{
+#if ! JUCE_ANDROID
+    if (! RuntimePermissions::isGranted (RuntimePermissions::writeExternalStorage))
+    {
+        SafePointer<CapteurComponent> safeThis (this);
+
+        RuntimePermissions::request (RuntimePermissions::writeExternalStorage,
+                                     [safeThis](bool granted) mutable
+                                     {
+                                         if (granted)
+                                             safeThis->startRecording ();
+                                     });
+        return;
+    }
+#endif
+
+#if (JUCE_ANDROID || JUCE_IOS)
+    auto parentDir = File::getSpecialLocation (File::tempDirectory);
+#else
+    auto parentDir = File::getSpecialLocation (File::userDocumentsDirectory);
+#endif
+
+    lastRecording = parentDir.getNonexistentChildFile ("JUCE Demo Audio Recording", ".wav");
+
+    recorder.startRecording (lastRecording);
+
+    recordButton.setButtonText ("Stop");
+    recordingThumbnail.setDisplayFullThumbnail (false);
+}
+
+std::unique_ptr<OutputStream> makeOutputStream (const URL& url)
+{
+    if (const auto doc = AndroidDocument::fromDocument (url))
+        return doc.createOutputStream ();
+
+#if ! JUCE_IOS
+    if (url.isLocalFile ())
+        return url.getLocalFile ().createOutputStream ();
+#endif
+
+    return url.createOutputStream ();
+}
+
+void CapteurComponent::stopRecording ()
+{
+    recorder.stop ();
+
+    chooser.launchAsync (FileBrowserComponent::saveMode | FileBrowserComponent::canSelectFiles
+                         | FileBrowserComponent::warnAboutOverwriting,
+                         [this](const FileChooser& c)
+                         {
+                             if (FileInputStream inputStream (lastRecording); inputStream.openedOk ())
+                                 if (const auto outputStream = makeOutputStream (c.getURLResult ()))
+                                     outputStream->writeFromInputStream (inputStream, -1);
+
+                             recordButton.setButtonText ("Record");
+                             recordingThumbnail.setDisplayFullThumbnail (true);
+                         });
+}
+
+void CapteurComponent::showAudioSettings ()
+{
+    auto selector = std::make_unique<AudioDeviceSelectorComponent> (
+        audioDeviceManager, 0, 2, 0, 2, false, false, true, false);
+
+    // Adjust size based on the current window size
+    auto width = jmin (500, (int) (getWidth () * 0.95f));
+    auto height = jmin (600, (int) (getHeight () * 0.95f));
+    selector->setSize (width, height);
+
+    DialogWindow::LaunchOptions options;
+    options.content.setOwned (selector.release ());
+    options.dialogTitle = "Audio Settings";
+    options.dialogBackgroundColour
+        = getUIColourIfAvailable (LookAndFeel_V4::ColourScheme::UIColour::windowBackground);
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = false; // Use JUCE title bar to ensure a close button is visible
+    options.resizable = false;
+    options.componentToCentreAround = this;
+
+    options.launchAsync ();
+}

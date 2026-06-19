@@ -33,7 +33,7 @@ public:
         setUsingNativeTitleBar (true);
 
 #if JUCE_ANDROID || JUCE_IOS
-        setContentOwned (new SafeAreaComponent { std::move (c) }, true);
+        setContentOwned (new SafeAreaComponent { std::move (content) }, true);
         setFullScreen (true);
 #else
         setContentOwned (content.release (), true);
@@ -81,6 +81,12 @@ private:
 
 //==============================================================================
 
+/** Application - JUCE application entry point for the Capteur program.
+ *
+ *  This class implements the minimal JUCE application lifecycle required by the
+ *  framework. It provides application metadata (name and version) and manages
+ *  the primary top-level window via a smart pointer.
+ */
 class Application : public juce::JUCEApplication
 {
 public:
