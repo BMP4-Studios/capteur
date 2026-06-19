@@ -1,6 +1,25 @@
 #include <JuceHeader.h>
 #include "AudioRecordingDemo.h"
 
+/**
+ * @class `MainCapteurWindow`
+ * @brief Main application window for the Capteur app.
+ *
+ * The `MainCapteurWindow` is a top-level `juce::DocumentWindow` that hosts the
+ * application's main content component. It performs platform-specific setup to
+ * ensure correct presentation and behaviour:
+ *
+ * - On mobile platforms (`JUCE_ANDROID` or `JUCE_IOS`) the content is wrapped
+ *   in a `SafeAreaComponent` to apply display safe-area insets (avoiding notches,
+ *   rounded corners and system indicators) and the window is set to fullscreen.
+ * - On desktop platforms the window is made resizable, given sensible resize
+ *   limits, and centered on screen.
+ *
+ * Constructor parameters:
+ * - `name` : The window title shown in the title bar.
+ * - `content` : A `std::unique_ptr<juce::Component>` owning the main UI component.
+ * - `app` : Reference to the hosting `JUCEApplication` used to signal application quit.
+ */
 class MainCapteurWindow : public juce::DocumentWindow
 {
 public:
