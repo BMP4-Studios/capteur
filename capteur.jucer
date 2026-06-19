@@ -10,9 +10,6 @@
       <FILE id="e3MlUH" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
       <FILE id="yHkPJy" name="AudioRecordingDemo.h" compile="0" resource="0"
             file="Source/AudioRecordingDemo.h"/>
-    </GROUP>
-    <GROUP id="HqyIVW" name="Assets">
-      <FILE id="VlT1cl" name="DemoUtilities.h" compile="0" resource="0" file="Source/DemoUtilities.h"/>
       <FILE id="U4WjUZ" name="AudioLiveScrollingDisplay.h" compile="0" resource="0"
             file="Source/AudioLiveScrollingDisplay.h"/>
     </GROUP>

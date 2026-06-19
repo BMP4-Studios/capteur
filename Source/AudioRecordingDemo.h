@@ -1,60 +1,41 @@
-/*
-  ==============================================================================
-
-   This file is part of the JUCE framework examples.
-   Copyright (c) Raw Material Software Limited
-
-   The code included in this file is provided under the terms of the ISC license
-   http://www.isc.org/downloads/software-support-policy/isc-license. Permission
-   to use, copy, modify, and/or distribute this software for any purpose with or
-   without fee is hereby granted provided that the above copyright notice and
-   this permission notice appear in all copies.
-
-   THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
-   REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
-   AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
-   INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
-   LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
-   OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
-   PERFORMANCE OF THIS SOFTWARE.
-
-  ==============================================================================
-*/
-
-/*******************************************************************************
- The block below describes the properties of this PIP. A PIP is a short snippet
- of code that can be read by the Projucer and used to generate a JUCE project.
-
- BEGIN_JUCE_PIP_METADATA
-
- name:             AudioRecordingDemo
- version:          1.0.0
- vendor:           JUCE
- website:          http://juce.com
- description:      Records audio to a file.
-
- dependencies:     juce_audio_basics, juce_audio_devices, juce_audio_formats,
-                   juce_audio_processors, juce_audio_utils, juce_core,
-                   juce_data_structures, juce_events, juce_graphics,
-                   juce_gui_basics, juce_gui_extra, juce_audio_processors_headless
- exporters:        xcode_mac, vs2022, vs2026, linux_make, androidstudio,
-                   xcode_iphone
-
- moduleFlags:      JUCE_STRICT_REFCOUNTEDPOINTER=1
-
- type:             Component
- mainClass:        AudioRecordingDemo
-
- useLocalCopy:     1
-
- END_JUCE_PIP_METADATA
-
-*******************************************************************************/
-
 #pragma once
 
-#include "DemoUtilities.h"
 #include "AudioLiveScrollingDisplay.h"
+
+inline Colour getUIColourIfAvailable (LookAndFeel_V4::ColourScheme::UIColour uiColour,
+                                      Colour                                 fallback = Colour (0xff4d4d4d)) noexcept
+{
+    if (auto* v4 = dynamic_cast<LookAndFeel_V4*> (&LookAndFeel::getDefaultLookAndFeel()))
+        return v4->getCurrentColourScheme().getUIColour (uiColour);
+
+    return fallback;
+}
+
+inline std::unique_ptr<InputSource> makeInputSource (const URL& url)
+{
+    if (const auto doc = AndroidDocument::fromDocument (url))
+        return std::make_unique<AndroidDocumentInputSource> (doc);
+
+#if ! JUCE_IOS
+    if (url.isLocalFile())
+        return std::make_unique<FileInputSource> (url.getLocalFile());
+#endif
+
+    return std::make_unique<URLInputSource> (url);
+}
+
+inline std::unique_ptr<OutputStream> makeOutputStream (const URL& url)
+{
+    if (const auto doc = AndroidDocument::fromDocument (url))
+        return doc.createOutputStream();
+
+#if ! JUCE_IOS
+    if (url.isLocalFile())
+        return url.getLocalFile().createOutputStream();
+#endif
+
+    return url.createOutputStream();
+}
 
 //==============================================================================
 /** A simple class that acts as an AudioIODeviceCallback and writes the
@@ -63,16 +44,12 @@
 class AudioRecorder final : public AudioIODeviceCallback
 {
 public:
-    AudioRecorder (AudioThumbnail& thumbnailToUpdate)
-        : thumbnail (thumbnailToUpdate)
+    AudioRecorder (AudioThumbnail& thumbnailToUpdate) : thumbnail (thumbnailToUpdate)
     {
         backgroundThread.startThread();
     }
 
-    ~AudioRecorder() override
-    {
-        stop();
-    }
+    ~AudioRecorder() override { stop(); }
 
     //==============================================================================
     void startRecording (const File& file)
@@ -91,15 +68,15 @@ public:
 
                 using Opts = AudioFormatWriterOptions;
 
-                if (auto writer = wavFormat.createWriterFor (fileStream, Opts{}.withSampleRate (sampleRate)
-                                                                               .withNumChannels (1)
-                                                                               .withBitsPerSample (16)))
+                if (auto writer = wavFormat.createWriterFor (
+                        fileStream, Opts {}.withSampleRate (sampleRate).withNumChannels (1).withBitsPerSample (16)))
                 {
                     auto* writerPtr = writer.get();
 
                     // Now we'll create one of these helper objects which will act as a FIFO buffer, and will
                     // write the data to disk on our background thread.
-                    threadedWriter.reset (new AudioFormatWriter::ThreadedWriter (writer.release(), backgroundThread, 32768));
+                    threadedWriter.reset (
+                        new AudioFormatWriter::ThreadedWriter (writer.release(), backgroundThread, 32768));
 
                     // Reset our recording thumbnail
                     thumbnail.reset (writerPtr->getNumChannels(), writerPtr->getSampleRate());
@@ -127,25 +104,19 @@ public:
         threadedWriter.reset();
     }
 
-    bool isRecording() const
-    {
-        return activeWriter.load() != nullptr;
-    }
+    bool isRecording() const { return activeWriter.load() != nullptr; }
 
     //==============================================================================
-    void audioDeviceAboutToStart (AudioIODevice* device) override
-    {
-        sampleRate = device->getCurrentSampleRate();
-    }
+    void audioDeviceAboutToStart (AudioIODevice* device) override { sampleRate = device->getCurrentSampleRate(); }
 
-    void audioDeviceStopped() override
-    {
-        sampleRate = 0;
-    }
+    void audioDeviceStopped() override { sampleRate = 0; }
 
-    void audioDeviceIOCallbackWithContext (const float* const* inputChannelData, int numInputChannels,
-                                           float* const* outputChannelData, int numOutputChannels,
-                                           int numSamples, const AudioIODeviceCallbackContext& context) override
+    void audioDeviceIOCallbackWithContext (const float* const*                 inputChannelData,
+                                           int                                 numInputChannels,
+                                           float* const*                       outputChannelData,
+                                           int                                 numOutputChannels,
+                                           int                                 numSamples,
+                                           const AudioIODeviceCallbackContext& context) override
     {
         ignoreUnused (context);
 
@@ -171,16 +142,15 @@ private:
     AudioThumbnail& thumbnail;
     TimeSliceThread backgroundThread { "Audio Recorder Thread" }; // the thread that will write our audio data to disk
     std::unique_ptr<AudioFormatWriter::ThreadedWriter> threadedWriter; // the FIFO used to buffer the incoming data
-    double sampleRate = 0.0;
-    int64 nextSampleNum = 0;
+    double                                             sampleRate    = 0.0;
+    int64                                              nextSampleNum = 0;
 
-    CriticalSection writerLock;
+    CriticalSection                                 writerLock;
     std::atomic<AudioFormatWriter::ThreadedWriter*> activeWriter { nullptr };
 };
 
 //==============================================================================
-class RecordingThumbnail final : public Component,
-                                 private ChangeListener
+class RecordingThumbnail final : public Component, private ChangeListener
 {
 public:
     RecordingThumbnail()
@@ -189,12 +159,9 @@ public:
         thumbnail.addChangeListener (this);
     }
 
-    ~RecordingThumbnail() override
-    {
-        thumbnail.removeChangeListener (this);
-    }
+    ~RecordingThumbnail() override { thumbnail.removeChangeListener (this); }
 
-    AudioThumbnail& getAudioThumbnail()     { return thumbnail; }
+    AudioThumbnail& getAudioThumbnail() { return thumbnail; }
 
     void setDisplayFullThumbnail (bool displayFull)
     {
@@ -209,8 +176,7 @@ public:
 
         if (thumbnail.getTotalLength() > 0.0)
         {
-            auto endTime = displayFullThumb ? thumbnail.getTotalLength()
-                                            : jmax (30.0, thumbnail.getTotalLength());
+            auto endTime = displayFullThumb ? thumbnail.getTotalLength() : jmax (30.0, thumbnail.getTotalLength());
 
             auto thumbArea = getLocalBounds();
             thumbnail.drawChannels (g, thumbArea.reduced (2), 0.0, endTime, 1.0f);
@@ -223,9 +189,9 @@ public:
     }
 
 private:
-    AudioFormatManager formatManager;
-    AudioThumbnailCache thumbnailCache  { 10 };
-    AudioThumbnail thumbnail            { 512, formatManager, thumbnailCache };
+    AudioFormatManager  formatManager;
+    AudioThumbnailCache thumbnailCache { 10 };
+    AudioThumbnail      thumbnail { 512, formatManager, thumbnailCache };
 
     bool displayFullThumb = false;
 
@@ -271,14 +237,15 @@ public:
 
         addAndMakeVisible (recordingThumbnail);
 
-       #ifndef JUCE_DEMO_RUNNER
+#ifndef JUCE_DEMO_RUNNER
         RuntimePermissions::request (RuntimePermissions::recordAudio,
                                      [this] (bool granted)
                                      {
                                          int numInputChannels = granted ? 2 : 0;
-                                         audioDeviceManager.initialise (numInputChannels, 2, nullptr, true, {}, nullptr);
+                                         audioDeviceManager.initialise (
+                                             numInputChannels, 2, nullptr, true, {}, nullptr);
                                      });
-       #endif
+#endif
 
         audioDeviceManager.addAudioCallback (&liveAudioScroller);
         audioDeviceManager.addAudioCallback (&recorder);
@@ -301,11 +268,11 @@ public:
     {
         auto area = getLocalBounds();
 
-        liveAudioScroller .setBounds (area.removeFromTop (80).reduced (8));
+        liveAudioScroller.setBounds (area.removeFromTop (80).reduced (8));
         recordingThumbnail.setBounds (area.removeFromTop (80).reduced (8));
 
         auto buttonRow = area.removeFromTop (36);
-        recordButton  .setBounds (buttonRow.removeFromLeft (140).reduced (8));
+        recordButton.setBounds (buttonRow.removeFromLeft (140).reduced (8));
         settingsButton.setBounds (buttonRow.removeFromLeft (140).reduced (8));
 
         explanationLabel.setBounds (area.reduced (8));
@@ -313,27 +280,29 @@ public:
 
 private:
     // if this PIP is running inside the demo runner, we'll use the shared device manager instead
-   #ifndef JUCE_DEMO_RUNNER
+#ifndef JUCE_DEMO_RUNNER
     AudioDeviceManager audioDeviceManager;
-   #else
+#else
     AudioDeviceManager& audioDeviceManager { getSharedAudioDeviceManager (1, 0) };
-   #endif
+#endif
 
     LiveScrollingAudioDisplay liveAudioScroller;
-    RecordingThumbnail recordingThumbnail;
-    AudioRecorder recorder { recordingThumbnail.getAudioThumbnail() };
+    RecordingThumbnail        recordingThumbnail;
+    AudioRecorder             recorder { recordingThumbnail.getAudioThumbnail() };
 
-    Label explanationLabel { {},
-                             "This page demonstrates how to record a wave file from the live audio input.\n\n"
-                             "After you are done with your recording you can choose where to save it." };
-    TextButton recordButton { "Record" };
-    TextButton settingsButton { "Settings" };
-    File lastRecording;
-    FileChooser chooser { "Output file...", File::getCurrentWorkingDirectory().getChildFile ("recording.wav"), "*.wav" };
+    Label       explanationLabel { {},
+                                   "This page demonstrates how to record a wave file from the live audio input.\n\n"
+                                   "After you are done with your recording you can choose where to save it." };
+    TextButton  recordButton { "Record" };
+    TextButton  settingsButton { "Settings" };
+    File        lastRecording;
+    FileChooser chooser { "Output file...",
+                          File::getCurrentWorkingDirectory().getChildFile ("recording.wav"),
+                          "*.wav" };
 
     void startRecording()
     {
-       #if ! JUCE_ANDROID
+#if ! JUCE_ANDROID
         if (! RuntimePermissions::isGranted (RuntimePermissions::writeExternalStorage))
         {
             SafePointer<AudioRecordingDemo> safeThis (this);
@@ -346,13 +315,13 @@ private:
                                          });
             return;
         }
-       #endif
+#endif
 
-       #if (JUCE_ANDROID || JUCE_IOS)
+#if (JUCE_ANDROID || JUCE_IOS)
         auto parentDir = File::getSpecialLocation (File::tempDirectory);
-       #else
+#else
         auto parentDir = File::getSpecialLocation (File::userDocumentsDirectory);
-       #endif
+#endif
 
         lastRecording = parentDir.getNonexistentChildFile ("JUCE Demo Audio Recording", ".wav");
 
@@ -366,14 +335,13 @@ private:
     {
         recorder.stop();
 
-        chooser.launchAsync (  FileBrowserComponent::saveMode
-                             | FileBrowserComponent::canSelectFiles
-                             | FileBrowserComponent::warnAboutOverwriting,
+        chooser.launchAsync (FileBrowserComponent::saveMode | FileBrowserComponent::canSelectFiles
+                                 | FileBrowserComponent::warnAboutOverwriting,
                              [this] (const FileChooser& c)
                              {
                                  if (FileInputStream inputStream (lastRecording); inputStream.openedOk())
-                                    if (const auto outputStream = makeOutputStream (c.getURLResult()))
-                                        outputStream->writeFromInputStream (inputStream, -1);
+                                     if (const auto outputStream = makeOutputStream (c.getURLResult()))
+                                         outputStream->writeFromInputStream (inputStream, -1);
 
                                  recordButton.setButtonText ("Record");
                                  recordingThumbnail.setDisplayFullThumbnail (true);
@@ -382,9 +350,8 @@ private:
 
     void showAudioSettings()
     {
-        auto selector = std::make_unique<AudioDeviceSelectorComponent> (audioDeviceManager,
-                                                                        0, 2, 0, 2,
-                                                                        false, false, true, false);
+        auto selector = std::make_unique<AudioDeviceSelectorComponent> (
+            audioDeviceManager, 0, 2, 0, 2, false, false, true, false);
 
         // Adjust size based on the current window size
         auto width  = jmin (500, (int) (getWidth() * 0.95f));
@@ -393,12 +360,13 @@ private:
 
         DialogWindow::LaunchOptions options;
         options.content.setOwned (selector.release());
-        options.dialogTitle                   = "Audio Settings";
-        options.dialogBackgroundColour        = getUIColourIfAvailable (LookAndFeel_V4::ColourScheme::UIColour::windowBackground);
-        options.escapeKeyTriggersCloseButton  = true;
-        options.useNativeTitleBar             = false; // Use JUCE title bar to ensure a close button is visible
-        options.resizable                     = false;
-        options.componentToCentreAround       = this;
+        options.dialogTitle = "Audio Settings";
+        options.dialogBackgroundColour
+            = getUIColourIfAvailable (LookAndFeel_V4::ColourScheme::UIColour::windowBackground);
+        options.escapeKeyTriggersCloseButton = true;
+        options.useNativeTitleBar            = false; // Use JUCE title bar to ensure a close button is visible
+        options.resizable                    = false;
+        options.componentToCentreAround      = this;
 
         options.launchAsync();
     }

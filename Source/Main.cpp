@@ -1,66 +1,54 @@
-/*
-  ==============================================================================
-
-    This file contains the startup code for a PIP.
-
-  ==============================================================================
-*/
-
 #include <JuceHeader.h>
 #include "AudioRecordingDemo.h"
 
-class Application    : public juce::JUCEApplication
+class Application : public juce::JUCEApplication
 {
 public:
-    //==============================================================================
     Application() = default;
 
-    const juce::String getApplicationName() override       { return "AudioRecordingDemo"; }
-    const juce::String getApplicationVersion() override    { return "1.0.0"; }
+    const juce::String getApplicationName() override { return "AudioRecordingDemo"; }
+    const juce::String getApplicationVersion() override { return "1.0.0"; }
 
     void initialise (const juce::String&) override
     {
         mainWindow.reset (new MainWindow ("AudioRecordingDemo", std::make_unique<AudioRecordingDemo>(), *this));
     }
 
-    void shutdown() override                         { mainWindow = nullptr; }
+    void shutdown() override { mainWindow = nullptr; }
 
 private:
-    class MainWindow    : public juce::DocumentWindow
+    class MainWindow : public juce::DocumentWindow
     {
     public:
         MainWindow (const juce::String& name, std::unique_ptr<juce::Component> c, JUCEApplication& a)
-            : DocumentWindow (name, juce::Desktop::getInstance().getDefaultLookAndFeel()
-                                                                .findColour (ResizableWindow::backgroundColourId),
-                              juce::DocumentWindow::allButtons),
-              app (a)
+        : DocumentWindow (
+              name,
+              juce::Desktop::getInstance().getDefaultLookAndFeel().findColour (ResizableWindow::backgroundColourId),
+              juce::DocumentWindow::allButtons),
+          app (a)
         {
             setUsingNativeTitleBar (true);
 
-           #if JUCE_ANDROID || JUCE_IOS
+#if JUCE_ANDROID || JUCE_IOS
             setContentOwned (new SafeAreaComponent { std::move (c) }, true);
             setFullScreen (true);
-           #else
+#else
             setContentOwned (c.release(), true);
             setResizable (true, false);
             setResizeLimits (300, 250, 10000, 10000);
             centreWithSize (getWidth(), getHeight());
-           #endif
+#endif
 
             setVisible (true);
         }
 
-        void closeButtonPressed() override
-        {
-            app.systemRequestedQuit();
-        }
+        void closeButtonPressed() override { app.systemRequestedQuit(); }
 
-       #if JUCE_ANDROID || JUCE_IOS
+#if JUCE_ANDROID || JUCE_IOS
         class SafeAreaComponent : public juce::Component
         {
         public:
-            explicit SafeAreaComponent (std::unique_ptr<Component> c)
-                : content (std::move (c))
+            explicit SafeAreaComponent (std::unique_ptr<Component> c) : content (std::move (c))
             {
                 addAndMakeVisible (*content);
             }
@@ -80,7 +68,7 @@ private:
             if (auto* c = getContentComponent())
                 c->resized();
         }
-       #endif
+#endif
 
     private:
         JUCEApplication& app;

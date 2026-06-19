@@ -1,0 +1,14 @@
+Checks: >
+  -*,
+  bugprone-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  cppcoreguidelines-*,
+  -modernize-use-trailing-return-type,
+  -readability-magic-numbers,
+  -readability-braces-around-statements,
+  -readability-identifier-length,
+  -readability-uppercase-literal-suffix
+HeaderFilterRegex: '(source|tests|benchmarks)/.*'
+FormatStyle: file
