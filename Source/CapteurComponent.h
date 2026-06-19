@@ -35,7 +35,7 @@ inline Colour getUIColourIfAvailable (LookAndFeel_V4::ColourScheme::UIColour uiC
     return fallback;
 }
 
-class CapteurComponent final : public Component
+class CapteurComponent final : public Component, private ChangeListener
 {
 public:
     CapteurComponent ();
@@ -59,6 +59,8 @@ private:
     Label       explanationLabel { {},
                                    "This page demonstrates how to record a wave file from the live audio input.\n\n"
                                    "After you are done with your recording you can choose where to save it." };
+    Label       gainLabel { {}, "Input Trim" };
+    Slider      gainSlider { Slider::LinearHorizontal, Slider::TextBoxRight };
     TextButton  recordButton { "Record" };
     TextButton  settingsButton { "Settings" };
     File        lastRecording;
@@ -71,6 +73,10 @@ private:
     void stopRecording ();
 
     void showAudioSettings ();
+
+    void disableInputPreprocessingIfAvailable ();
+
+    void changeListenerCallback (ChangeBroadcaster* source) override;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CapteurComponent)
 };

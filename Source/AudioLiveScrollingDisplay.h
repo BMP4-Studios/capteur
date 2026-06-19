@@ -37,6 +37,8 @@ public:
         setBufferSize (1024);
     }
 
+    void setInputGain (float newGain) noexcept { inputGain.store (jmax (0.0f, newGain)); }
+
     void audioDeviceAboutToStart (AudioIODevice*) override { clear(); }
 
     void audioDeviceStopped() override { clear(); }
@@ -50,6 +52,8 @@ public:
     {
         ignoreUnused (context);
 
+        const auto currentInputGain = inputGain.load();
+
         for (int i = 0; i < numberOfSamples; ++i)
         {
             float inputSample = 0;
@@ -58,7 +62,7 @@ public:
                 if (const float* inputChannel = inputChannelData[chan])
                     inputSample += inputChannel[i]; // find the sum of all the channels
 
-            inputSample *= 10.0f; // boost the level to make it more easily visible.
+            inputSample *= 10.0f * currentInputGain; // boost the level to make it more easily visible.
 
             pushSample (&inputSample, 1);
         }
@@ -68,6 +72,9 @@ public:
             if (float* outputChannel = outputChannelData[j])
                 zeromem (outputChannel, (size_t) numberOfSamples * sizeof (float));
     }
+
+private:
+    std::atomic<float> inputGain { 1.0f };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LiveScrollingAudioDisplay)
 };

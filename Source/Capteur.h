@@ -41,7 +41,13 @@ public:
 
     bool isRecording() const { return activeWriter.load() != nullptr; }
 
-    void audioDeviceAboutToStart (AudioIODevice* device) override { sampleRate = device->getCurrentSampleRate(); }
+    void setInputGain (float newGain) noexcept { inputGain.store (jmax (0.0f, newGain)); }
+
+    void audioDeviceAboutToStart (AudioIODevice* device) override
+    {
+        sampleRate = device->getCurrentSampleRate();
+        recordingBuffer.setSize (1, jmax (1, device->getCurrentBufferSizeSamples()), false, false, true);
+    }
 
     void audioDeviceStopped() override { sampleRate = 0; }
 
@@ -58,6 +64,8 @@ private:
     std::unique_ptr<AudioFormatWriter::ThreadedWriter> threadedWriter; // the FIFO used to buffer the incoming data
     double                                             sampleRate    = 0.0;
     int64                                              nextSampleNum = 0;
+    AudioBuffer<float>                                 recordingBuffer;
+    std::atomic<float>                                 inputGain { 1.0f };
 
     CriticalSection                                 writerLock;
     std::atomic<AudioFormatWriter::ThreadedWriter*> activeWriter { nullptr };

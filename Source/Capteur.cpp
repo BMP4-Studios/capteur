@@ -86,13 +86,24 @@ void Capteur::audioDeviceIOCallbackWithContext (const float* const*             
 
     const ScopedLock sl (writerLock);
 
-    if (activeWriter.load() != nullptr && numInputChannels >= thumbnail.getNumChannels())
+    if (auto* writer = activeWriter.load(); writer != nullptr && numInputChannels >= thumbnail.getNumChannels())
     {
-        activeWriter.load()->write (inputChannelData, numSamples);
+        const auto numChannelsToWrite = thumbnail.getNumChannels();
 
-        // Create an AudioBuffer to wrap our incoming data, note that this does no allocations or copies, it simply references our input data
-        AudioBuffer<float> buffer (const_cast<float**> (inputChannelData), thumbnail.getNumChannels(), numSamples);
-        thumbnail.addBlock (nextSampleNum, buffer, 0, numSamples);
+        if (recordingBuffer.getNumChannels() != numChannelsToWrite || recordingBuffer.getNumSamples() < numSamples)
+            recordingBuffer.setSize (numChannelsToWrite, numSamples, false, false, true);
+
+        for (int channel = 0; channel < numChannelsToWrite; ++channel)
+        {
+            if (const auto* inputChannel = inputChannelData[channel])
+                recordingBuffer.copyFrom (channel, 0, inputChannel, numSamples);
+            else
+                recordingBuffer.clear (channel, 0, numSamples);
+        }
+
+        recordingBuffer.applyGain (inputGain.load());
+        writer->write (recordingBuffer.getArrayOfReadPointers(), numSamples);
+        thumbnail.addBlock (nextSampleNum, recordingBuffer, 0, numSamples);
         nextSampleNum += numSamples;
     }
 

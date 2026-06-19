@@ -35,6 +35,24 @@ CapteurComponent::CapteurComponent ()
     explanationLabel.setColour (TextEditor::textColourId, Colours::black);
     explanationLabel.setColour (TextEditor::backgroundColourId, Colour (0x00000000));
 
+    addAndMakeVisible (gainLabel);
+    gainLabel.setFont (FontOptions (15.0f, Font::plain));
+    gainLabel.setJustificationType (Justification::centredRight);
+
+    addAndMakeVisible (gainSlider);
+    gainSlider.setRange (-48.0, 0.0, 0.5);
+    gainSlider.setValue (0.0, dontSendNotification);
+    gainSlider.setDoubleClickReturnValue (true, 0.0);
+    gainSlider.setNumDecimalPlacesToDisplay (1);
+    gainSlider.setTextBoxStyle (Slider::TextBoxRight, false, 72, 24);
+    gainSlider.setTextValueSuffix (" dB");
+    gainSlider.onValueChange = [this]
+        {
+            const auto gain = Decibels::decibelsToGain (static_cast<float> (gainSlider.getValue()));
+            liveAudioScroller.setInputGain (gain);
+            recorder.setInputGain (gain);
+        };
+
     addAndMakeVisible (recordButton);
     recordButton.setColour (TextButton::buttonColourId, Colour (0xffff5c5c));
     recordButton.setColour (TextButton::textColourOnId, Colours::black);
@@ -47,20 +65,21 @@ CapteurComponent::CapteurComponent ()
                 startRecording ();
         };
 
+    audioDeviceManager.addChangeListener (this);
+
     addAndMakeVisible (settingsButton);
     settingsButton.onClick = [this] { showAudioSettings (); };
 
     addAndMakeVisible (recordingThumbnail);
 
-#ifndef JUCE_DEMO_RUNNER
     RuntimePermissions::request (RuntimePermissions::recordAudio,
                                  [this](bool granted)
                                  {
                                      int numInputChannels = granted ? 2 : 0;
                                      audioDeviceManager.initialise (
                                          numInputChannels, 2, nullptr, true, {}, nullptr);
+                                     disableInputPreprocessingIfAvailable ();
                                  });
-#endif
 
     audioDeviceManager.addAudioCallback (&liveAudioScroller);
     audioDeviceManager.addAudioCallback (&recorder);
@@ -70,6 +89,7 @@ CapteurComponent::CapteurComponent ()
 
 CapteurComponent::~CapteurComponent ()
 {
+    audioDeviceManager.removeChangeListener (this);
     audioDeviceManager.removeAudioCallback (&recorder);
     audioDeviceManager.removeAudioCallback (&liveAudioScroller);
 }
@@ -80,6 +100,10 @@ void CapteurComponent::resized ()
 
     liveAudioScroller.setBounds (area.removeFromTop (80).reduced (8));
     recordingThumbnail.setBounds (area.removeFromTop (80).reduced (8));
+
+    auto gainRow = area.removeFromTop (44);
+    gainLabel.setBounds (gainRow.removeFromLeft (100).reduced (8));
+    gainSlider.setBounds (gainRow.reduced (8));
 
     auto buttonRow = area.removeFromTop (36);
     recordButton.setBounds (buttonRow.removeFromLeft (140).reduced (8));
@@ -113,6 +137,7 @@ void CapteurComponent::startRecording ()
 
     lastRecording = parentDir.getNonexistentChildFile ("JUCE Demo Audio Recording", ".wav");
 
+    disableInputPreprocessingIfAvailable ();
     recorder.startRecording (lastRecording);
 
     recordButton.setButtonText ("Stop");
@@ -170,4 +195,20 @@ void CapteurComponent::showAudioSettings ()
     options.componentToCentreAround = this;
 
     options.launchAsync ();
+}
+
+void CapteurComponent::disableInputPreprocessingIfAvailable ()
+{
+    if (auto* device = audioDeviceManager.getCurrentAudioDevice ())
+    {
+        const auto accepted = device->setAudioPreprocessingEnabled (false);
+        DBG ("Audio input preprocessing disable request on " << device->getTypeName ()
+                                                             << (accepted ? " accepted" : " rejected"));
+    }
+}
+
+void CapteurComponent::changeListenerCallback (ChangeBroadcaster* source)
+{
+    if (source == &audioDeviceManager)
+        disableInputPreprocessingIfAvailable ();
 }
