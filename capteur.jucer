@@ -7,9 +7,14 @@
               cppLanguageStandard="latest">
   <MAINGROUP id="WUELaG" name="Capteur">
     <GROUP id="{82834282-C151-9A3A-C3B1-8252C8D350E3}" name="Source">
+      <FILE id="TPMDT8" name="RecordingThumbnail.h" compile="0" resource="0"
+            file="Source/RecordingThumbnail.h"/>
+      <FILE id="QmcEyz" name="CapteurComponent.cpp" compile="1" resource="0"
+            file="Source/CapteurComponent.cpp"/>
+      <FILE id="JEwett" name="CapteurComponent.h" compile="0" resource="0"
+            file="Source/CapteurComponent.h"/>
       <FILE id="e3MlUH" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
-      <FILE id="yHkPJy" name="AudioRecordingDemo.h" compile="0" resource="0"
-            file="Source/AudioRecordingDemo.h"/>
+      <FILE id="yHkPJy" name="Capteur.h" compile="0" resource="0" file="Source/Capteur.h"/>
       <FILE id="U4WjUZ" name="AudioLiveScrollingDisplay.h" compile="0" resource="0"
             file="Source/AudioLiveScrollingDisplay.h"/>
     </GROUP>

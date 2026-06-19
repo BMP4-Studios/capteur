@@ -1,5 +1,5 @@
 #include <JuceHeader.h>
-#include "AudioRecordingDemo.h"
+#include "CapteurComponent.h"
 
 /**
  * @class `MainCapteurWindow`
@@ -91,7 +91,7 @@ public:
 
     void initialise (const juce::String&) override
     {
-        mainWindow.reset (new MainCapteurWindow ("Capteur", std::make_unique<AudioRecordingDemo>(), *this));
+        mainWindow.reset (new MainCapteurWindow ("Capteur", std::make_unique<CapteurComponent>(), *this));
     }
 
     void shutdown() override { mainWindow = nullptr; }

@@ -22,6 +22,7 @@
 */
 
 #pragma once
+#include <JuceHeader.h>
 
 //==============================================================================
 /* This component scrolls a continuous waveform showing the audio that's
